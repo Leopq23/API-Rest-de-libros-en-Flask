@@ -1,6 +1,16 @@
 from flask import Flask, request, jsonify
+import json
+import sqlite3
 
 app = Flask(__name__)
+
+def db_connection():
+    conn = None
+    try:
+      conn = sqlite3.connect("libros.sqlite")
+    except sqlite3.error as e:
+      print(e)
+    return conn
 
 books_list = [
   {
@@ -67,53 +77,67 @@ books_list = [
 
 @app.route("/libros", methods=["GET","POST"])
 def libros():
+    conn = db_connection()
+    cursor = conn.cursor()
+
     if request.method == "GET":
-        if len(books_list) > 0:
-            return jsonify(books_list)
-        else:
-            "No hay libros", 404
+        cursor = conn.execute("SELECT * FROM libro")
+        libros = [
+            dict(id=row[0], nombre=row[1], autor=row[2], año_publicacion=row[3])
+            for row in cursor.fetchall()
+        ]
+        if libros is not None:
+            return jsonify(libros)
 
     if request.method == "POST":
         nuevo_autor = request.form["autor"]
         nuevo_año = request.form["año_publicacion"]
         nuevo_titulo = request.form["nombre"]
-        iD = books_list[-1]["id"]+1
-
-        nuevo_objeto = {
-            "id": iD,
-            "nombre": nuevo_titulo,
-            "autor": nuevo_autor,
-            "año_publicacion": nuevo_año
-        }
-        books_list.append(nuevo_objeto)
-        return jsonify(books_list), 201
+        sql = """ INSERT INTO libro (nombre, autor, año_publicacion)
+                  VALUES (?, ?, ?)"""
+        cursor = cursor.execute(sql, (nuevo_titulo, nuevo_autor, nuevo_año))
+        conn.commit()
+        return f"Libro con el id: {cursor.lastrowid} se ha creado exitosamente"
     
 @app.route("/libros/<int:id>", methods=["GET","PUT","DELETE"])
 def libro(id): 
+    conn = db_connection()
+    cursor = conn.cursor()
+    libro = None
     if request.method == "GET":
-        for book in books_list:
-            if book["id"] == id:
-                return jsonify(book)
-            pass
+        cursor.execute("SELECT * FROM libro WHERE id=?", (id,))
+        rows = cursor.fetchall()
+        for r in rows:
+            libro = r
+        if libro is not None:
+            return jsonify(libro), 200
+        else:
+            return "No se encontro el libro", 404
+        
     if request.method == "PUT":
-        for book in books_list:
-            if book["id"] == id:
-                book["autor"] = request.form["autor"]
-                book["nombre"] = request.form["nombre"]
-                book["año_publicacion"] = request.form["año_publicacion"]
-                libro_actualizado = {
-                    "id": id,
-                    "autor": book["autor"],
-                    "nombre": book["nombre"],
-                    "año_publicacion": book["año_publicacion"]
-                }
-                return jsonify(libro_actualizado)
+        sql = """ UPDATE libro
+                  SET nombre=?,
+                      autor=?,
+                      año_publicacion=?
+                  WHERE id=? """
+        autor = request.form["autor"]
+        nombre = request.form["nombre"]
+        año_publicacion = request.form["año_publicacion"]
+        libro_actualizado = {
+              "id": id,
+              "nombre": nombre,
+              "autor": autor,
+              "año_publicacion": año_publicacion
+        }
+        conn.execute(sql, (nombre, autor, año_publicacion, id))
+        conn.commit()
+        return jsonify(libro_actualizado)
             
     if request.method == "DELETE":
-        for index, book in enumerate(books_list):
-            if book["id"] == id:
-                books_list.pop(index)
-                return jsonify(books_list)
+        sql = """ DELETE FROM libro WHERE id=? """
+        conn.execute(sql, (id,))
+        conn.commit()
+        return "El libro con id: {} fue eliminado".format(id), 200
 
 
 
