@@ -3,22 +3,16 @@ import pymysql
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
-
-DB_HOST = os.getenv('DB_HOST')
-DB_USER = os.getenv('DB_USER')
-DB_PASSWORD = os.getenv('DB_PASSWORD')
-
 app = Flask(__name__)
 
 def db_connection():
     conn = None
     try:
       conn = pymysql.connect(
-          host= DB_HOST,
-          database='sql10758209',
-          user=DB_USER,
-          password=DB_PASSWORD,
+          host=os.getenv('MYSQLHOST'),
+          database=os.getenv('MYSQLDATABASE'),
+          user=os.getenv('MYSQLUSER'),
+          password=os.getenv('MYSQLPASSWORD'),
           charset='utf8mb4',
           cursorclass= pymysql.cursors.DictCursor
       )

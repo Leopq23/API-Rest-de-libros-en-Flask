@@ -9,10 +9,10 @@ DB_USER = os.getenv('DB_USER')
 DB_PASSWORD = os.getenv('DB_PASSWORD')
 
 conn = pymysql.connect(
-    host=DB_HOST,
-    database='sql10758209',
-    user=DB_USER,
-    password=DB_PASSWORD,
+    host=os.getenv('MYSQLHOST'),
+    database=os.getenv('MYSQLDATABASE'),
+    user=os.getenv('MYSQLUSER'),
+    password=os.getenv('MYSQLPASSWORD'),
     charset='utf8mb4',
     cursorclass= pymysql.cursors.DictCursor
 )
