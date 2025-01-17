@@ -14,6 +14,7 @@ def db_connection():
           user=os.getenv('MYSQLUSER'),
           password=os.getenv('MYSQLPASSWORD'),
           charset='utf8mb4',
+          port=int(os.getenv('MYSQLPORT')),
           cursorclass= pymysql.cursors.DictCursor
       )
     except pymysql.MySQLError as e:

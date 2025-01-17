@@ -13,6 +13,7 @@ conn = pymysql.connect(
     database=os.getenv('MYSQLDATABASE'),
     user=os.getenv('MYSQLUSER'),
     password=os.getenv('MYSQLPASSWORD'),
+    port=int(os.getenv('MYSQLPORT')),
     charset='utf8mb4',
     cursorclass= pymysql.cursors.DictCursor
 )
