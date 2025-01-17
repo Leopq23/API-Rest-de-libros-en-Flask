@@ -15,10 +15,10 @@ def db_connection():
     conn = None
     try:
       conn = pymysql.connect(
-          host='sql10.freesqldatabase.com',
+          host= DB_HOST,
           database='sql10758209',
-          user='sql10758209',
-          password='HcG72ZE88C',
+          user=DB_USER,
+          password=DB_PASSWORD,
           charset='utf8mb4',
           cursorclass= pymysql.cursors.DictCursor
       )
