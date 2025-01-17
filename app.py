@@ -1,79 +1,30 @@
 from flask import Flask, request, jsonify
-import json
-import sqlite3
+import pymysql
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DB_HOST = os.getenv('DB_HOST')
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD')
 
 app = Flask(__name__)
 
 def db_connection():
     conn = None
     try:
-      conn = sqlite3.connect("libros.sqlite")
-    except sqlite3.error as e:
+      conn = pymysql.connect(
+          host='sql10.freesqldatabase.com',
+          database='sql10758209',
+          user='sql10758209',
+          password='HcG72ZE88C',
+          charset='utf8mb4',
+          cursorclass= pymysql.cursors.DictCursor
+      )
+    except pymysql.MySQLError as e:
       print(e)
     return conn
-
-books_list = [
-  {
-    "id": 1,
-    "nombre": "Cien años de soledad",
-    "autor": "Gabriel García Márquez",
-    "año_publicacion": 1967
-  },
-  {
-    "id": 2,
-    "nombre": "Don Quijote de la Mancha",
-    "autor": "Miguel de Cervantes",
-    "año_publicacion": 1605
-  },
-  {
-    "id": 3,
-    "nombre": "Orgullo y prejuicio",
-    "autor": "Jane Austen",
-    "año_publicacion": 1813
-  },
-  {
-    "id": 4,
-    "nombre": "1984",
-    "autor": "George Orwell",
-    "año_publicacion": 1949
-  },
-  {
-    "id": 5,
-    "nombre": "El gran Gatsby",
-    "autor": "F. Scott Fitzgerald",
-    "año_publicacion": 1925
-  },
-  {
-    "id": 6,
-    "nombre": "Matar a un ruiseñor",
-    "autor": "Harper Lee",
-    "año_publicacion": 1960
-  },
-  {
-    "id": 7,
-    "nombre": "Crimen y castigo",
-    "autor": "Fiódor Dostoyevski",
-    "año_publicacion": 1866
-  },
-  {
-    "id": 8,
-    "nombre": "La Odisea",
-    "autor": "Homero",
-    "año_publicacion": -700
-  },
-  {
-    "id": 9,
-    "nombre": "El señor de los anillos",
-    "autor": "J.R.R. Tolkien",
-    "año_publicacion": 1954
-  },
-  {
-    "id": 10,
-    "nombre": "Harry Potter y la piedra filosofal",
-    "autor": "J.K. Rowling",
-    "año_publicacion": 1997
-  }
-]
 
 @app.route("/libros", methods=["GET","POST"])
 def libros():
@@ -81,45 +32,43 @@ def libros():
     cursor = conn.cursor()
 
     if request.method == "GET":
-        cursor = conn.execute("SELECT * FROM libro")
-        libros = [
-            dict(id=row[0], nombre=row[1], autor=row[2], año_publicacion=row[3])
-            for row in cursor.fetchall()
-        ]
-        if libros is not None:
-            return jsonify(libros)
+        cursor.execute("SELECT * FROM libro")
+        libros = cursor.fetchall()
+        conn.close()
+        return jsonify(libros), 200
 
     if request.method == "POST":
         nuevo_autor = request.form["autor"]
         nuevo_año = request.form["año_publicacion"]
         nuevo_titulo = request.form["nombre"]
         sql = """ INSERT INTO libro (nombre, autor, año_publicacion)
-                  VALUES (?, ?, ?)"""
-        cursor = cursor.execute(sql, (nuevo_titulo, nuevo_autor, nuevo_año))
+                  VALUES (%s, %s, %s)"""
+        cursor.execute(sql, (nuevo_titulo, nuevo_autor, nuevo_año))
         conn.commit()
-        return f"Libro con el id: {cursor.lastrowid} se ha creado exitosamente"
+        last_id = cursor.lastrowid
+        conn.close()
+        return f"Libro con el id: {last_id} se ha creado exitosamente", 201
     
 @app.route("/libros/<int:id>", methods=["GET","PUT","DELETE"])
 def libro(id): 
     conn = db_connection()
     cursor = conn.cursor()
-    libro = None
+
     if request.method == "GET":
-        cursor.execute("SELECT * FROM libro WHERE id=?", (id,))
-        rows = cursor.fetchall()
-        for r in rows:
-            libro = r
-        if libro is not None:
+        cursor.execute("SELECT * FROM libro WHERE id=%s", (id,))
+        libro = cursor.fetchone()
+        conn.close()
+        if libro:
             return jsonify(libro), 200
         else:
             return "No se encontro el libro", 404
         
     if request.method == "PUT":
         sql = """ UPDATE libro
-                  SET nombre=?,
-                      autor=?,
-                      año_publicacion=?
-                  WHERE id=? """
+                  SET nombre=%s,
+                      autor=%s,
+                      año_publicacion=%s
+                  WHERE id=%s """
         autor = request.form["autor"]
         nombre = request.form["nombre"]
         año_publicacion = request.form["año_publicacion"]
@@ -129,15 +78,16 @@ def libro(id):
               "autor": autor,
               "año_publicacion": año_publicacion
         }
-        conn.execute(sql, (nombre, autor, año_publicacion, id))
+        cursor.execute(sql, (nombre, autor, año_publicacion, id))
         conn.commit()
+        conn.close()
         return jsonify(libro_actualizado)
             
     if request.method == "DELETE":
-        sql = """ DELETE FROM libro WHERE id=? """
-        conn.execute(sql, (id,))
+        sql = """ DELETE FROM libro WHERE id=%s """
+        cursor.execute(sql, (id,))
         conn.commit()
-        return "El libro con id: {} fue eliminado".format(id), 200
+        return "El libro con id: {id} fue eliminado".format(id), 200
 
 
 
